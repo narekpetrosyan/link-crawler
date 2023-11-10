@@ -1,26 +1,51 @@
 const {JSDOM} = require("jsdom");
 const axios = require("axios");
 
-async function crawlPage(url) {
-    try {
-        const data = await axios.get(url)
 
-        if (data.status > 399) {
-            console.log(`Error in fetch, code: ${data.status}, on page ${url}`)
-            return
+async function crawlPage(baseURL, currentURL, pages) {
+    const baseURLObject = new URL(baseURL)
+    const currentURLObject = new URL(currentURL)
+
+    if (baseURLObject.hostname !== currentURLObject.hostname) {
+        return pages
+    }
+
+    const normalizedCurrentUrl = normalizeUrl(currentURL)
+
+    if (pages[normalizedCurrentUrl] > 0) {
+        pages[normalizedCurrentUrl]++
+        return pages
+    }
+
+    pages[normalizedCurrentUrl] = 1
+
+    try {
+        const response = await fetch(currentURL)
+        console.log(`Actively crawling ${currentURL}`)
+
+        if (response.status > 399) {
+            console.log(`Error in fetch, code: ${response.status}, on page ${currentURL}`)
+            return pages
         }
 
-        const contentType = data.headers["content-type"]
+        const contentType = response.headers.get("content-type")
 
         if (!contentType.includes("text/html")) {
-            console.log(`Non HTML response, on page ${url}`)
-            return
+            console.log(`Non HTML response, on page ${currentURL}`)
+            return pages
         }
 
-        return data.data
+        const HTMLBody = await response.text()
+        const nextUrls = getUrlsFromHTML(HTMLBody, baseURL)
+
+        for (const nextUrl of nextUrls) {
+            pages = await crawlPage(baseURL, nextUrl, pages)
+        }
     }catch (e) {
-        console.log(`Fetch error ${e}, on page ${url}`)
+        console.log(`Fetch error ${e}, on page ${currentURL}`)
     }
+
+    return pages
 }
 
 function getUrlsFromHTML(htmlBody, baseUrl = '') {
