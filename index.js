@@ -1,6 +1,7 @@
 const axios= require('axios');
 const { JSDOM } = require("jsdom");
 const {crawlPage} = require("./crawl")
+const {printReport} = require("./report")
 
 
 async function main() {
@@ -18,9 +19,7 @@ async function main() {
 
     const pages = await crawlPage(baseUrl,baseUrl, {})
 
-    for (const page of Object.entries(pages)) {
-        console.log(page,123)
-    }
+    printReport(pages)
 }
 
 main()
